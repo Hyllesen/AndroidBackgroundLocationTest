@@ -2,7 +2,6 @@ package com.backgroundlocationtest;
 
 import android.app.Application;
 import android.util.Log;
-import com.marianhello.bgloc.react.BackgroundGeolocationPackage;  // <--- Import Package
 import com.facebook.react.PackageList;
 import com.facebook.hermes.reactexecutor.HermesExecutorFactory;
 import com.facebook.react.bridge.JavaScriptExecutorFactory;
@@ -27,7 +26,6 @@ public class MainApplication extends Application implements ReactApplication {
       List<ReactPackage> packages = new PackageList(this).getPackages();
       // Packages that cannot be autolinked yet can be added manually here, for example:
       // packages.add(new MyReactNativePackage());
-      packages.add(new BackgroundGeolocationPackage());       
       return packages;
     }
 

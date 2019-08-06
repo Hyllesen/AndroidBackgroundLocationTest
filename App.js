@@ -1,114 +1,137 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow
- */
+import React, { Component } from "react";
+import { Alert, View, Text } from "react-native";
+import BackgroundGeolocation from "@mauron85/react-native-background-geolocation";
 
-import React, {Fragment} from 'react';
-import {
-  SafeAreaView,
-  StyleSheet,
-  ScrollView,
-  View,
-  Text,
-  StatusBar,
-} from 'react-native';
+export default class App extends Component {
+  componentDidMount() {
+    BackgroundGeolocation.configure({
+      desiredAccuracy: BackgroundGeolocation.HIGH_ACCURACY,
+      stationaryRadius: 50,
+      distanceFilter: 50,
+      notificationTitle: "Background tracking",
+      notificationText: "enabled",
+      debug: true,
+      startOnBoot: false,
+      stopOnTerminate: true,
+      locationProvider: BackgroundGeolocation.ACTIVITY_PROVIDER,
+      interval: 10000,
+      fastestInterval: 5000,
+      activitiesInterval: 10000,
+      stopOnStillActivity: false
+    });
 
-import {
-  Header,
-  LearnMoreLinks,
-  Colors,
-  DebugInstructions,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+    BackgroundGeolocation.on("location", location => {
+      // handle your locations here
+      // to perform long running operation on iOS
+      // you need to create background task
+      console.log(location);
+      BackgroundGeolocation.startTask(taskKey => {
+        // execute long running task
+        // eg. ajax post location
+        // IMPORTANT: task has to be ended by endTask
+        BackgroundGeolocation.endTask(taskKey);
+      });
+    });
 
-const App = () => {
-  return (
-    <Fragment>
-      <StatusBar barStyle="dark-content" />
-      <SafeAreaView>
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          style={styles.scrollView}>
-          <Header />
-          {global.HermesInternal == null ? null : (
-            <View style={styles.engine}>
-              <Text style={styles.footer}>Engine: Hermes</Text>
-            </View>
-          )}
-          <View style={styles.body}>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Step One</Text>
-              <Text style={styles.sectionDescription}>
-                Edit <Text style={styles.highlight}>App.js</Text> to change this
-                screen and then come back to see your edits.
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>See Your Changes</Text>
-              <Text style={styles.sectionDescription}>
-                <ReloadInstructions />
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Debug</Text>
-              <Text style={styles.sectionDescription}>
-                <DebugInstructions />
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Learn More</Text>
-              <Text style={styles.sectionDescription}>
-                Read the docs to discover what to do next:
-              </Text>
-            </View>
-            <LearnMoreLinks />
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </Fragment>
-  );
-};
+    BackgroundGeolocation.on("stationary", stationaryLocation => {
+      // handle stationary locations here
+      Actions.sendLocation(stationaryLocation);
+    });
 
-const styles = StyleSheet.create({
-  scrollView: {
-    backgroundColor: Colors.lighter,
-  },
-  engine: {
-    position: 'absolute',
-    right: 0,
-  },
-  body: {
-    backgroundColor: Colors.white,
-  },
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.black,
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-    color: Colors.dark,
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-  footer: {
-    color: Colors.dark,
-    fontSize: 12,
-    fontWeight: '600',
-    padding: 4,
-    paddingRight: 12,
-    textAlign: 'right',
-  },
-});
+    BackgroundGeolocation.on("error", error => {
+      console.log("[ERROR] BackgroundGeolocation error:", error);
+    });
 
-export default App;
+    BackgroundGeolocation.on("start", () => {
+      console.log("[INFO] BackgroundGeolocation service has been started");
+    });
+
+    BackgroundGeolocation.on("stop", () => {
+      console.log("[INFO] BackgroundGeolocation service has been stopped");
+    });
+
+    BackgroundGeolocation.on("authorization", status => {
+      console.log(
+        "[INFO] BackgroundGeolocation authorization status: " + status
+      );
+      if (status !== BackgroundGeolocation.AUTHORIZED) {
+        // we need to set delay or otherwise alert may not be shown
+        setTimeout(
+          () =>
+            Alert.alert(
+              "App requires location tracking permission",
+              "Would you like to open app settings?",
+              [
+                {
+                  text: "Yes",
+                  onPress: () => BackgroundGeolocation.showAppSettings()
+                },
+                {
+                  text: "No",
+                  onPress: () => console.log("No Pressed"),
+                  style: "cancel"
+                }
+              ]
+            ),
+          1000
+        );
+      }
+    });
+
+    BackgroundGeolocation.on("background", () => {
+      console.log("[INFO] App is in background");
+    });
+
+    BackgroundGeolocation.on("foreground", () => {
+      console.log("[INFO] App is in foreground");
+    });
+
+    BackgroundGeolocation.on("abort_requested", () => {
+      console.log("[INFO] Server responded with 285 Updates Not Required");
+
+      // Here we can decide whether we want stop the updates or not.
+      // If you've configured the server to return 285, then it means the server does not require further update.
+      // So the normal thing to do here would be to `BackgroundGeolocation.stop()`.
+      // But you might be counting on it to receive location updates in the UI, so you could just reconfigure and set `url` to null.
+    });
+
+    BackgroundGeolocation.on("http_authorization", () => {
+      console.log("[INFO] App needs to authorize the http requests");
+    });
+
+    BackgroundGeolocation.checkStatus(status => {
+      console.log(
+        "[INFO] BackgroundGeolocation service is running",
+        status.isRunning
+      );
+      console.log(
+        "[INFO] BackgroundGeolocation services enabled",
+        status.locationServicesEnabled
+      );
+      console.log(
+        "[INFO] BackgroundGeolocation auth status: " + status.authorization
+      );
+
+      // you don't need to check status before start (this is just the example)
+      if (!status.isRunning) {
+        BackgroundGeolocation.start(); //triggers start on start event
+      }
+    });
+
+    // you can also just start without checking for status
+    // BackgroundGeolocation.start();
+  }
+
+  componentWillUnmount() {
+    // unregister all event listeners
+    BackgroundGeolocation.removeAllListeners();
+  }
+
+  render() {
+    return (
+      <View>
+        <Text>Trackin</Text>
+      </View>
+    );
+  }
+}
